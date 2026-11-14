@@ -439,8 +439,8 @@ function tripBrief(){var c=city(),when=$('#tw').value||'this weekend',n=$('#tn')
 function openSheet(h){sheet.innerHTML='<button class="x" data-act="close" aria-label="Close">✕</button>'+h;app.classList.add('open');sheetOpen=true;sheet.scrollTop=0}
 function closeSheet(){app.classList.remove('open');sheetOpen=false;ui.fs=false}
 function filtersSheet(){var top=sheet.scrollTop,was=ui.fs;openSheet('<h3>Filters</h3>'+filterGroups()+'<div class="acts"><button class="btn pri" data-act="close">Show '+shown().length+' places</button>'+(nFilters()?'<button class="btn ghost wide" data-act="clearf">Clear all filters</button>':'')+'</div>');ui.fs=true;if(was)sheet.scrollTop=top}
-function profile(id){var p=find(id);if(!p)return;ui.sel=id;
-  openSheet('<div class="hero'+(p.ph?' hasph':'')+'" style="'+grad(p.n)+'"><i>'+mono(p)+'</i>'+(p.ph?'<img class="ph" alt="" referrerpolicy="no-referrer-when-downgrade" src="'+esc(p.ph)+'" onerror="__hlPh(this,\''+esc(p.id)+'\')">'+(p.pa?'<span class="cr">Photo: '+esc(p.pa)+' via Google</span>':''):logo(p))+'</div><h3>'+esc(p.n)+'</h3><p class="meta">'+meta(p)+(ui.me&&p.ll?' · '+walk(dist(ui.me,p.ll))+' from you':'')+'</p>'+tags(p)+(p.ad?'<p class="meta" style="margin-top:10px">'+esc(p.ad)+'</p>':'')+(p.ds?'<p class="ds">'+esc(p.ds)+'</p>':'')+(p.note?'<p class="quote">'+esc(p.note)+'</p>':'')+(p.chk?'<p class="warn">'+esc(p.chk)+'</p>':'')+
+function profile(id){var p=find(id);if(!p)return;ui.sel=id;setTimeout(function(){sitePhoto(p)},0);
+  openSheet('<div class="hero'+(p.ph?' hasph':'')+'" style="'+grad(p.n)+'"><i>'+mono(p)+'</i>'+(p.ph?'<img class="ph" alt="" referrerpolicy="no-referrer-when-downgrade" src="'+esc(p.ph)+'" onerror="__hlPh(this,\''+esc(p.id)+'\')">'+'<span class="cr">'+(p.pa?'Photo: '+esc(p.pa)+' via Google':'Photo: '+esc(host(p)||'their website'))+'</span>':logo(p))+'</div><h3>'+esc(p.n)+'</h3><p class="meta">'+meta(p)+(ui.me&&p.ll?' · '+walk(dist(ui.me,p.ll))+' from you':'')+'</p>'+tags(p)+(p.ad?'<p class="meta" style="margin-top:10px">'+esc(p.ad)+'</p>':'')+(p.ds?'<p class="ds">'+esc(p.ds)+'</p>':'')+(p.note?'<p class="quote">'+esc(p.note)+'</p>':'')+(p.chk?'<p class="warn">'+esc(p.chk)+'</p>':'')+
   '<div class="acts"><button class="btn pri" data-act="reserve" data-v="'+id+'">Reserve a table</button>'+(p.ll?'<button class="btn" data-act="showmap" data-v="'+id+'">Show on map</button><a class="btn" href="'+esc(gdir(p))+'" target="_blank" rel="noopener">Directions</a>':'')+'<a class="btn" href="'+esc(p.gm||gmaps(p))+'" target="_blank" rel="noopener">Google Maps page</a><button class="btn" data-act="must" data-v="'+id+'">'+(p.must?'Remove must try':'Mark must try')+'</button><button class="btn" data-act="been" data-v="'+id+'">'+(p.been?'Not been yet':'I’ve been')+'</button><button class="btn ghost" data-act="edit" data-v="'+id+'">Edit</button><button class="btn ghost" data-act="del" data-v="'+id+'">Remove</button></div>')}
 function today(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2)}
 function reserve(id){var p=find(id);if(!p)return;var times='';for(var h=12;h<=22;h++){['00','30'].forEach(function(m){var v=h+':'+m;times+='<option'+(v==='19:30'?' selected':'')+'>'+v+'</option>'})}
@@ -467,7 +467,7 @@ var GR=[],gT=null,PHT={};
 function gPlaces(){return google.maps.places&&google.maps.places.Place?Promise.resolve(google.maps.places):google.maps.importLibrary('places')}
 function gFail(e){var el=$('#gres');if(el)el.innerHTML='<p class="warn">Google search isn’t working for your key yet. In Google Cloud, enable “Places API (New)” for the Hotlist project and add it to the key’s allowed APIs, then try again in a few minutes.</p><p class="small">'+esc(e&&e.message?String(e.message).slice(0,160):'')+'</p>'}
 function addSearch(){var c=city();
-  openSheet('<h3>Add to '+esc(c.name)+'</h3><form id="gs"><label for="gq">Search Google for the place</label><input class="f" id="gq" type="search" autocomplete="off" placeholder="Name, e.g. Brutto"><div class="acts"><button class="btn pri" type="submit">Search</button></div></form><div id="gres"><p class="small">Pick the right listing and Hotlist fills in the address, pin, cuisine, website, booking link, logo and photo.</p></div><div class="acts"><button class="btn ghost wide" data-act="manual">Enter the details by hand instead</button></div>');
+  openSheet('<h3>Add to '+esc(c.name)+'</h3><form id="gs"><label for="gq">Search Google for the place</label><input class="f" id="gq" type="search" autocomplete="off" placeholder="Name, e.g. Brutto"><div class="acts"><button class="btn pri" type="submit">Search</button></div></form><div id="gres"><p class="small">Pick the right listing and Hotlist fills in the address, pin, cuisine, website, booking link and logo, plus a photo from the place’s own website.</p></div><div class="acts"><button class="btn ghost wide" data-act="manual">Enter the details by hand instead</button></div>');
   $('#gs').addEventListener('submit',function(e){e.preventDefault();clearTimeout(gT);gSearch()});
   $('#gq').addEventListener('input',function(){clearTimeout(gT);gT=setTimeout(function(){if($('#gq')&&$('#gq').value.trim().length>=4)gSearch()},700)});
   setTimeout(function(){var q=$('#gq');if(q)q.focus()},50)}
@@ -482,18 +482,21 @@ function gPick(i){var pl=GR[i],c=city(),el=$('#gres');if(!pl)return;
   var dup=c.places.filter(function(x){return (x.gid&&x.gid===pl.id)||x.n.toLowerCase()===String(pl.displayName||'').toLowerCase()})[0];
   if(dup){closeSheet();profile(dup.id);status('Already on your list');return}
   el.innerHTML='<p class="small">Adding '+esc(pl.displayName||'')+'…</p>';
-  pl.fetchFields({fields:['displayName','formattedAddress','location','addressComponents','types','primaryType','primaryTypeDisplayName','priceLevel','websiteURI','googleMapsURI','editorialSummary','photos']}).then(function(){
+  pl.fetchFields({fields:['displayName','formattedAddress','location','addressComponents','types','primaryType','primaryTypeDisplayName','priceLevel','websiteURI','googleMapsURI','editorialSummary']}).then(function(){
     var loc=pl.location,ll=[+(typeof loc.lat==='function'?loc.lat():loc.lat).toFixed(6),+(typeof loc.lng==='function'?loc.lng():loc.lng).toFixed(6)];
     var ts=[pl.primaryType].concat(pl.types||[]),ty;ts.some(function(t){if(t&&GT[t]){ty=GT[t];return true}});
     var pr=String(pl.priceLevel||''),vb=/EXPENSIVE/.test(pr)&&!/INEXPENSIVE/.test(pr)?'smart':(/INEXPENSIVE|MODERATE/.test(pr)?'casual':undefined);
     var p={id:String(pl.displayName||'place').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+Date.now().toString(36),n:pl.displayName||$('#gq').value.trim(),cat:GCAT[ty]||'dinner',cu:/^restaurant$/i.test(pl.primaryTypeDisplayName||'')?'':(pl.primaryTypeDisplayName||''),ar:gArea(c,ll,pl.addressComponents),ad:String(pl.formattedAddress||'').replace(/,\s*(UK|United Kingdom)$/,''),ll:ll,gid:pl.id};
     if(ty)p.ty=ty;if(vb)p.vb=vb;if(pl.googleMapsURI)p.gm=pl.googleMapsURI;if(pl.editorialSummary)p.ds=String(pl.editorialSummary);
     if(pl.websiteURI){p.site=pl.websiteURI;try{p.dom=new URL(pl.websiteURI).hostname.replace(/^www\./,'')}catch(e){}}
-    try{if(pl.photos&&pl.photos.length){p.ph=pl.photos[0].getURI({maxWidth:900});var at=pl.photos[0].authorAttributions;if(at&&at.length&&at[0].displayName)p.pa=at[0].displayName}}catch(e){}
-    c.places.push(p);ui.sel=p.id;ui.cat=ui.ty=ui.vb=ui.ar='all';save();render();profile(p.id);status('Added from Google')}).catch(gFail)}
-window.__hlPh=function(img,id){var p=find(id);if(img.parentNode)img.parentNode.classList.remove('hasph');var par=img.parentNode;img.remove();
-  if(!p||!p.gid||PHT[id]||!G.ready)return;PHT[id]=1;
-  gPlaces().then(function(lib){var pl=new lib.Place({id:p.gid});return pl.fetchFields({fields:['photos']}).then(function(){if(pl.photos&&pl.photos.length){p.ph=pl.photos[0].getURI({maxWidth:900});save();if(sheetOpen&&ui.sel===id)profile(id)}else{delete p.ph;save()}})}).catch(function(){})};
+    c.places.push(p);ui.sel=p.id;ui.cat=ui.ty=ui.vb=ui.ar='all';save();render();profile(p.id);status('Added from Google');sitePhoto(p)}).catch(gFail)}
+window.__hlPh=function(img,id){var p=find(id);var par=img.parentNode;if(par){par.classList.remove('hasph');var cr=par.querySelector('.cr');if(cr)cr.remove()}img.remove();if(p&&p.ph){delete p.ph;delete p.pa;save()}};
+/* Photo for places added through search: the share image the restaurant's own website publishes, loaded from their site. */
+function sitePhoto(p){if(!p||!p.gid||!p.site||p.ph||PHT[p.id])return;PHT[p.id]=1;var id=p.id;
+  fetch('https://api.microlink.io/?url='+encodeURIComponent(p.site)).then(function(r){return r.json()}).then(function(j){var d=j&&j.status==='success'&&j.data;if(!d)return;var ch=false;
+    if(d.image&&/^https:\/\//.test(d.image.url||'')&&(d.image.width||999)>=300){p.ph=d.image.url;ch=true}
+    if(!p.ds&&d.description){p.ds=String(d.description).slice(0,220);ch=true}
+    if(ch){save();if(sheetOpen&&ui.sel===id&&$('#sheet .hero'))profile(id)}}).catch(function(){})}
 function findG(){var name=$('#fn').value.trim(),st=$('#afs'),c=city();if(!name)return;st.textContent='Looking it up…';
   geocode([name,$('#fd').value.trim()||$('#fa').value.trim(),c.name].filter(Boolean).join(', '),function(r){if(!r){st.textContent='Google couldn’t find that. Check the name, or type the address and try again.';return}
     $('#fd').value=r.ad;$('#fll').value=r.ll.join(',');$('#fll').dataset.fresh='1';st.textContent='Pin set from Google. Check the address is the right place.'})}
